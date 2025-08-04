@@ -13,6 +13,7 @@ class PostSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
     image = serializers.ImageField(use_url = True, required = False)
     comments = serializers.SerializerMethodField(read_only = True)
+    like_count = serializers.IntegerField(read_only =True)
     
     def get_comments(self, instance):
         serializer = CommentSerializer(instance.comments, many = True)
@@ -27,9 +28,13 @@ class PostSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = [
             "id",
+            "writer",
+            "title",
             "craeted_at",
             "updated_at",
-            "comments"
+            "comments",
+            "click_num",
+            "like_count"
         ]
     
     image = serializers.ImageField(use_url = True, required = False)
@@ -39,7 +44,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = '__all__'
-        read_only_fields = ['movie']
+        read_only_fields = ['post']
         
 
 class PostListSerializer(serializers.ModelSerializer):
@@ -57,11 +62,13 @@ class PostListSerializer(serializers.ModelSerializer):
         model = Post
         fields = [
             "id",
-            "name",
+            "writer",
+            "title",
             "created_at",
             "updated_at",
             "image",
             "comments_cnt",
-            "tags"
+            "tags",
+            "like_count"
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "comments_cnt"]
+        read_only_fields = ["id", "writer", "created_at", "updated_at", "comments_cnt", "like_count"]

@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 
 # Create your views here.
 
+#======================================================================
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     
@@ -27,7 +28,7 @@ class PostViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ["update", "destroy", "partial_update"]:
-            return [IsAdminUser()]
+            return [IsOwnerOrReadOnly()]
         return []
 
     
@@ -65,36 +66,41 @@ class PostViewSet(viewsets.ModelViewSet):
         ran_post_serializer = PostListSerializer(ran_post)
         return Response(ran_post_serializer.data)
 
+    @action(methods=["GET"], detail=True)
+    def test(self, request, pk=None):
+        test_post = self.get_object()
+        test_post.click_num += 1
+        test_post.save(update_fields = ["click_num"])
+        return Response()
     
+    #좋아요 (유저별 한 번만 누르기 가능)
+    ## detail = True : 하나의 객체에 대해 동작
+    @action(methods=["POST"], detail=True, permission_classes =[IsAuthenticated])
+    def like(self, request, pk = None):
+        like_post = self.get_object()
+        user = request.user
+        
+        if user in like_post.likes.all():
+            like_post.likes.remove(user)
+            like_post.like_count -= 1
+            like_post.save(update_fields = ["like_count"])
+            return Response({"message": "좋아요 취소"})
+        else:
+            like_post.likes.add(user)
+            like_post.like_count += 1
+            like_post.save(update_fields = ["like_count"])
+            return Response({"message": "좋아요 추가"})
+    
+    #좋아요 상위 3개 post
+    ## detail = False : 여러 객체에 대해 동작
+    @action(methods=["GET"], detail = False)
+    def topLike(self, request):
+        topLike_posts = self.get_queryset().order_by('-like_count')[:3]
+        topLike_posts_serializer = PostListSerializer(topLike_posts, many=True)
+        return Response(topLike_posts_serializer.data)
 
 
-
-@api_view(['GET', 'POST'])
-def comment_read_create(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    
-    if request.method == 'GET':
-        comments = Comment.objects.filter(post = post)
-        serializer = CommentSerializer(comments, many = True)
-        return Response(data=serializer.data)
-    
-    elif request.method == 'POST':
-        serializer = CommentSerializer(data = request.data)
-        if serializer.is_valid():
-            serializer.save(post=post)
-        return Response(serializer.data)
-    
-    
-    
-#Tag 검색 구현을 위한 함수
-@api_view(['GET'])
-def find_tag(request, tags_name):
-    tags = get_object_or_404(Tag, name = tags_name)
-    if request.method == 'GET':
-        post = Post.objects.filter(tags__in = [tags])
-        serializers= PostSerializer(post, many = True)
-        return Response(data = serializers.data)
-    
+#======================================================================
 
 class CommentViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin):
     queryset = Comment.objects.all()
@@ -106,7 +112,7 @@ class CommentViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.
         return []
     
     
-
+    
 class PostCommentViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateModelMixin):
     #queryset = Comment.objects.all()
     serializer_class = CommentSerializer
@@ -124,7 +130,7 @@ class PostCommentViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.
         serializer.save(post=post)
         return Response(serializer.data)
     
-    
+#======================================================================   
     
 class TagViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     queryset = Tag.objects.all()
