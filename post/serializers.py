@@ -25,19 +25,28 @@ class PostSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Post
-        fields = '__all__'
+        fields = [
+            "id", 
+            "writer", 
+            "title", 
+            "content", 
+            "created_at", 
+            "updated_at",
+            "tags", 
+            "image", 
+            "click_num", 
+            "like_count", 
+            "comments"
+        ]
         read_only_fields = [
             "id",
             "writer",
-            "title",
-            "craeted_at",
+            "created_at",
             "updated_at",
             "comments",
             "click_num",
             "like_count"
         ]
-    
-    image = serializers.ImageField(use_url = True, required = False)
 
 
 class CommentSerializer(serializers.ModelSerializer):
